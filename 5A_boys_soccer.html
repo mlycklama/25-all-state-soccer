@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All-State Soccer Info</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app" class="min-h-screen p-4">
+        <div class="max-w-7xl mx-auto">
+            <h1 class="text-3xl font-bold text-gray-900 mb-4">All-State Soccer Info</h1>
+            
+            <div class="bg-white rounded-md p-4 mb-6">
+                <ul class="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                    <li>This page only shows information on players. You still must vote in the Google Form sent to you.</li>
+                    <li>Use the buttons above the table to filter players by position or player of the year nominees.</li>
+                    <li>Columns are sortable. Click on the header to sort.</li>
+                    <li>Additional information on each player is available under the View More link.</li>
+                    <li>Goalkeeper stats are available under the goalkeeper filter. If they are up for player of the year, click on View More for their profile and stats.</li>
+                </ul>
+            </div>
+            
+            <div id="loading" class="flex items-center justify-center py-12">
+                <div class="text-lg text-gray-600">Loading player data...</div>
+            </div>
+
+            <div id="content" style="display: none;">
+                <!-- Quick Filter Buttons -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="handleButtonClick('poy')" id="btn-poy" class="px-4 py-2 rounded-md font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                            Player of the Year
+                        </button>
+                        <button onclick="handleButtonClick('Forward')" id="btn-Forward" class="px-4 py-2 rounded-md font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                            Forward
+                        </button>
+                        <button onclick="handleButtonClick('Midfield')" id="btn-Midfield" class="px-4 py-2 rounded-md font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                            Midfield
+                        </button>
+                        <button onclick="handleButtonClick('Defender')" id="btn-Defender" class="px-4 py-2 rounded-md font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                            Defender
+                        </button>
+                        <button onclick="handleButtonClick('Goalkeeper')" id="btn-Goalkeeper" class="px-4 py-2 rounded-md font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                            Goalkeeper
+                        </button>
+                    </div>
+                    
+                    <button onclick="clearFilters()" id="clearBtn" class="text-sm text-blue-600 hover:text-blue-800 font-medium mt-3" style="display: none;">
+                        Clear filter
+                    </button>
+                </div>
+
+                <!-- Results count -->
+                <div id="resultsCount" class="mb-4 text-sm text-gray-600"></div>
+
+                <!-- Table -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr id="tableHead">
+                                    <th onclick="sortTable('name')" role="button" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                                        Player <span id="sort-name" class="text-gray-400 ml-1">⇅</span>
+                                    </th>
+                                    <th onclick="sortTable('school')" role="button" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                                        School <span id="sort-school" class="text-gray-400 ml-1">⇅</span>
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                                     <th onclick="sortTable('gp')" role="button" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                                         GP <span id="sort-gp" class="text-gray-400 ml-1">⇅</span>
+                                     </th>
+                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">G</th>
+                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">A</th>
+                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pts</th>
+                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">All-conf.</th>
+                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">more info</th>
+                                 </tr>
+                             </thead>
+                            <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="noResults" class="text-center py-8 text-gray-500" style="display: none;">
+                    No players found matching the selected filter.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style="display: none;">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+                <h2 id="modalTitle" class="text-2xl font-bold text-gray-900"></h2>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="px-6 py-4">
+                <div id="modalContent" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                </div>
+            </div>
+
+            <div class="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200">
+                <button onclick="closeModal()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dataUrl = "https://script.googleusercontent.com/a/macros/idahostatesman.com/echo?user_content_key=AehSKLjhFFw7mI5PVCqjDMeKXJm-MnIlEaO76sDa4qyZZKL9J8QVCvybXehjfUtmwVleVhTZtaLtw4wpT_SCR29cb-4SsPBWX1XxKZGw0nEDeMmwAEx98NcoWw3CcfR7djksC-WvPAbi9GmwKGktjENTo3wBBYzhW2As7dhrglAa70py5Gd0LWSXacky_qD-fSOGQmjwJKUWgJfd2zjvLMVCs7aS7uKiu7ONIqNa5rLi9x-4pg5NhEPp0dM_QKq6AG3Vi4ez_JrAjwECa07MAoT8m545WuuESWVE8Xtcl1pecJcIk-AXfw3u6xJI2H2z_A&lib=MHt9RJutLk85bf0VH5ZxcMaaDfETvgIFd";
+        
+        let allData = [];
+        let filteredData = [];
+        let activeButton = null;
+        let sortColumn = null;
+        let sortDirection = 'asc';
+
+        async function fetchData() {
+            try {
+                const response = await fetch(dataUrl);
+                const json = await response.json();
+                
+                // Handle different possible JSON structures
+                let data = json;
+                if (json.data && Array.isArray(json.data)) {
+                    data = json.data;
+                } else if (json.players && Array.isArray(json.players)) {
+                    data = json.players;
+                } else if (!Array.isArray(json)) {
+                    console.error('Unexpected data format:', json);
+                    throw new Error('Data is not in expected format');
+                }
+                
+                allData = data;
+                filteredData = data;
+                
+                console.log('Loaded data:', allData.length, 'players');
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                
+                renderTable();
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('loading').innerHTML = '<div class="text-lg text-red-600">Error loading data: ' + error.message + '<br>Please check the browser console for details.</div>';
+            }
+        }
+
+        function applyFilters() {
+            let result = [...allData];
+
+            if (activeButton === 'poy') {
+                result = result.filter(player => 
+                    player['Player of the Year nomination'] === 'Yes, player of the year'
+                );
+            } else if (activeButton) {
+                result = result.filter(player => 
+                    player['Primary position'] === activeButton
+                );
+            }
+
+            filteredData = result;
+            
+            // Apply sorting if a column is selected
+            if (sortColumn) {
+                applySorting();
+            }
+            
+            renderTable();
+        }
+
+        function sortTable(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+            
+            applySorting();
+            renderTable();
+            updateSortIndicators();
+        }
+
+        function applySorting() {
+            // Map sort keys to actual JSON property names
+            const columnMap = {
+                'name': "Player's name",
+                'school': 'School',
+                'gp': 'Games played',
+                'goals': 'Goals scored',
+                'assists': 'Assists',
+                'points': 'Points',
+                'shutouts': 'Shutouts',
+                'saves': 'Saves',
+                'goals_allowed': 'Goals allowed'
+            };
+            
+            const actualColumn = columnMap[sortColumn];
+            if (!actualColumn) return;
+            
+            filteredData.sort((a, b) => {
+                let aVal = a[actualColumn];
+                let bVal = b[actualColumn];
+                
+                if (!aVal && aVal !== 0) aVal = '';
+                if (!bVal && bVal !== 0) bVal = '';
+                
+                const aNum = parseFloat(String(aVal).replace(/[^0-9.\-]/g, ''));
+                const bNum = parseFloat(String(bVal).replace(/[^0-9.\-]/g, ''));
+                
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+                } else {
+                    const aStr = String(aVal).toLowerCase();
+                    const bStr = String(bVal).toLowerCase();
+                    if (sortDirection === 'asc') {
+                        return aStr < bStr ? -1 : aStr > bStr ? 1 : 0;
+                    } else {
+                        return bStr < aStr ? -1 : bStr > aStr ? 1 : 0;
+                    }
+                }
+            });
+        }
+
+        function renderTableHead() {
+            const isGK = activeButton === 'Goalkeeper';
+            // Build header HTML depending on GK mode
+            const headers = [];
+            headers.push(`<th onclick="sortTable('name')" role="button" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Player <span id="sort-name" class="text-gray-400 ml-1">⇅</span></th>`);
+            headers.push(`<th onclick="sortTable('school')" role="button" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">School <span id="sort-school" class="text-gray-400 ml-1">⇅</span></th>`);
+            headers.push(`<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>`);
+            headers.push(`<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>`);
+             headers.push(`<th onclick="sortTable('gp')" role="button" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">GP <span id="sort-gp" class="text-gray-400 ml-1">⇅</span></th>`);
+
+            if (isGK) {
+                // GK-specific stats (sortable)
+                headers.push(`<th onclick="sortTable('shutouts')" role="button" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Shutouts <span id="sort-shutouts" class="text-gray-400 ml-1">⇅</span></th>`);
+                headers.push(`<th onclick="sortTable('saves')" role="button" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Saves <span id="sort-saves" class="text-gray-400 ml-1">⇅</span></th>`);
+                headers.push(`<th onclick="sortTable('goals_allowed')" role="button" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Goals allowed <span id="sort-goals_allowed" class="text-gray-400 ml-1">⇅</span></th>`);
+            } else {
+                // Outfield stats
+                headers.push(`<th onclick="sortTable('goals')" role="button" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">G <span id="sort-goals" class="text-gray-400 ml-1">⇅</span></th>`);
+                headers.push(`<th onclick="sortTable('assists')" role="button" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">A <span id="sort-assists" class="text-gray-400 ml-1">⇅</span></th>`);
+                headers.push(`<th onclick="sortTable('points')" role="button" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Pts <span id="sort-points" class="text-gray-400 ml-1">⇅</span></th>`);
+            }
+
+            // All-conference column (not sortable)
+            headers.push(`<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">All-conf.</th>`);
+            headers.push(`<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">more info</th>`);
+
+            document.getElementById('tableHead').innerHTML = `<tr>${headers.join('')}</tr>`;
+            // Update indicators to reflect current sort state
+            updateSortIndicators();
+        }
+ 
+        function updateSortIndicators() {
+            const cols = ['name','school','gp','goals','assists','points','shutouts','saves','goals_allowed'];
+            cols.forEach(col => {
+                const indicator = document.getElementById('sort-' + col);
+                if (!indicator) return;
+                if (col === sortColumn) {
+                    indicator.textContent = sortDirection === 'asc' ? '↑' : '↓';
+                    indicator.className = 'text-blue-600 ml-1';
+                } else {
+                    indicator.textContent = '⇅';
+                    indicator.className = 'text-gray-400 ml-1';
+                }
+            });
+        }
+ 
+        function handleButtonClick(buttonType) {
+            if (activeButton === buttonType) {
+                activeButton = null;
+            } else {
+                activeButton = buttonType;
+            }
+            
+            // Update button styles
+            ['poy', 'Forward', 'Midfield', 'Defender', 'Goalkeeper'].forEach(btn => {
+                const element = document.getElementById('btn-' + btn);
+                if (btn === activeButton) {
+                    element.className = 'px-4 py-2 rounded-md font-medium transition-colors bg-blue-600 text-white';
+                } else {
+                    element.className = 'px-4 py-2 rounded-md font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200';
+                }
+            });
+            
+            // Show/hide clear button
+            document.getElementById('clearBtn').style.display = activeButton ? 'block' : 'none';
+            
+            applyFilters();
+        }
+
+        function clearFilters() {
+            activeButton = null;
+            
+            // Reset all button styles
+            ['poy', 'Forward', 'Midfield', 'Defender', 'Goalkeeper'].forEach(btn => {
+                document.getElementById('btn-' + btn).className = 'px-4 py-2 rounded-md font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200';
+            });
+            
+            document.getElementById('clearBtn').style.display = 'none';
+            applyFilters();
+        }
+
+        function renderTable() {
+            // ensure head matches current filter (GK vs outfield)
+            renderTableHead();
+             const tbody = document.getElementById('tableBody');
+             const resultsCount = document.getElementById('resultsCount');
+             const noResults = document.getElementById('noResults');
+             
+             resultsCount.textContent = `Showing ${filteredData.length} of ${allData.length} players`;
+             
+             if (filteredData.length === 0) {
+                 tbody.innerHTML = '';
+                 noResults.style.display = 'block';
+                 return;
+             }
+             
+             noResults.style.display = 'none';
+             
+             tbody.innerHTML = filteredData.map((player, idx) => {
+                 // Safely retrieve values and allow 0 to display
+                 const playerName = (player["Player's name"] !== undefined && player["Player's name"] !== null && player["Player's name"] !== '') ? player["Player's name"] : '';
+                 const school = (player['School'] !== undefined && player['School'] !== null && player['School'] !== '') ? player['School'] : '';
+                 const jersey = (player['Jersey number'] !== undefined && player['Jersey number'] !== null && player['Jersey number'] !== '') ? player['Jersey number'] : '';
+                 const position = (player['Primary position'] !== undefined && player['Primary position'] !== null && player['Primary position'] !== '') ? player['Primary position'] : '';
+                 
+                 // GP should come from Games played GK when in GK mode, otherwise Games played
+                 const gpKey = (activeButton === 'Goalkeeper') ? 'Games played GK' : 'Games played';
+                 const gp = (player[gpKey] !== undefined && player[gpKey] !== null && player[gpKey] !== '') ? player[gpKey] : '';
+                 
+                 // GK-specific stats
+                 const shutouts = (player['Shutouts'] !== undefined && player['Shutouts'] !== null && player['Shutouts'] !== '') ? player['Shutouts'] : '';
+                 const saves = (player['Saves'] !== undefined && player['Saves'] !== null && player['Saves'] !== '') ? player['Saves'] : '';
+                 const goalsAllowed = (player['Goals allowed'] !== undefined && player['Goals allowed'] !== null && player['Goals allowed'] !== '') ? player['Goals allowed'] : '';
+                 
+                 // All-conference awards this year
+                 const allConf = (player['All-conference awards this year'] !== undefined && player['All-conference awards this year'] !== null && player['All-conference awards this year'] !== '') ? player['All-conference awards this year'] : '';
+                 
+                 // Outfield stats
+                 const goals = (player['Goals scored'] !== undefined && player['Goals scored'] !== null && player['Goals scored'] !== '') ? player['Goals scored'] : '';
+                 const assists = (player['Assists'] !== undefined && player['Assists'] !== null && player['Assists'] !== '') ? player['Assists'] : '';
+                 const points = (player['Points'] !== undefined && player['Points'] !== null && player['Points'] !== '') ? player['Points'] : '';
+                 
+                 if (activeButton === 'Goalkeeper') {
+                     return `
+                 <tr class="hover:bg-gray-50">
+                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${playerName}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${school}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${jersey}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${position}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${gp}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${shutouts}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${saves}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${goalsAllowed}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${allConf}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm">
+                         <button onclick="openModal(${idx})" class="text-blue-600 hover:text-blue-800 font-medium">
+                             View More
+                         </button>
+                     </td>
+                 </tr>
+                     `;
+                 } else {
+                     return `
+                 <tr class="hover:bg-gray-50">
+                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${playerName}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${school}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${jersey}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${position}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${gp}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${goals}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${assists}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${points}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${allConf}</td>
+                     <td class="px-4 py-3 whitespace-nowrap text-sm">
+                         <button onclick="openModal(${idx})" class="text-blue-600 hover:text-blue-800 font-medium">
+                             View More
+                         </button>
+                     </td>
+                 </tr>
+                     `;
+                 }
+             }).join('');
+         }
+
+        function openModal(index) {
+            const player = filteredData[index];
+            document.getElementById('modalTitle').textContent = player["Player's name"] || 'Player Details';
+            
+            // Define the specific order of fields to display (excluding Player's name)
+            const fieldOrder = [
+                "Coach's comment",
+                "School",
+                "Jersey number",
+                "Year in school",
+                "Height",
+                "Primary position",
+                "Specific position",
+                "Secondary position",
+                "Games played",
+                "Goals scored",
+                "Assists",
+                "Points",
+                "Other stats",
+                "Games played GK",
+                "Shutouts",
+                "Saves",
+                "Goals allowed",
+                "Other stats GK",
+                "All-conference awards this year",
+                "Previous awards",
+                "College offers",
+                "College commit",
+                "Hudl or other highlight video"
+            ];
+            
+            const modalContent = document.getElementById('modalContent');
+            modalContent.innerHTML = fieldOrder
+                .filter(key => {
+                    const value = player[key];
+                    // Show field if it has a value OR if it's 0 (for Jersey number)
+                    return value !== undefined && value !== null && value !== "";
+                })
+                .map(key => {
+                    const value = player[key];
+                    // Render the Hudl / highlight field as a clickable link
+                    if (key === "Hudl or other highlight video") {
+                        let url = String(value).trim();
+                        if (url) {
+                            if (!/^https?:\/\//i.test(url)) {
+                                url = 'https://' + url;
+                            }
+                            return `
+                                <div class="border-b border-gray-100 pb-3">
+                                    <div class="text-sm font-medium text-gray-500 mb-1">${key}</div>
+                                    <div class="text-base text-gray-900">
+                                        <a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Watch video</a>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        // fallback to plain display if somehow empty
+                    }
+                    
+                    return `
+                        <div class="border-b border-gray-100 pb-3">
+                            <div class="text-sm font-medium text-gray-500 mb-1">${key}</div>
+                            <div class="text-base text-gray-900">${value}</div>
+                        </div>
+                    `;
+                }).join('');
+            
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        // Initialize
+        fetchData();
+    </script>
+</body>
+</html>
